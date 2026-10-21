@@ -1,0 +1,47 @@
+# ============================================================
+#  Sistema UGEL Chincha — .gitignore
+# ============================================================
+
+# ---- Dependencias (Composer) ----
+/htdocs/vendor/
+composer.phar
+
+# ---- Credenciales / configuración sensible ----
+# Contienen contraseñas reales: NO subir al repo.
+**/sftp.json
+**/.vscode/sftp.json
+/htdocs/conexion.php
+/htdocs/sftp_tool
+# ---- Logs ----
+*.log
+/htdocs/error_log
+
+# ---- Carpeta de análisis (datos personales: DNIs, correos, contraseñas) ----
+/analisis/data/
+/analisis/_tmpdb/
+/analisis/cookies.txt
+/analisis/*.html
+/analisis/import_sia_a_destino.sql
+/analisis/result_query.txt
+/analisis/actual_db_query.txt
+
+# ---- Archivos subidos por usuarios y documentos generados ----
+/htdocs/uploads/
+/htdocs/documentos_fichas/
+
+# ---- Sistema operativo ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Editores / IDEs ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- Temporales ----
+*.tmp
+*.bak
+*.cache

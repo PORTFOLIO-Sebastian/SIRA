@@ -1,0 +1,1004 @@
+diff --git a/htdocs/vista_reportes.php b/htdocs/vista_reportes.php
+index 60bc963..9d91193 100644
+--- a/htdocs/vista_reportes.php
++++ b/htdocs/vista_reportes.php
+@@ -10,11 +10,11 @@ if (!$es_especialista && !$es_jefe) { header('Location: dashboard.php'); exit();
+ 
+ $id_usuario = (int)$_SESSION['id_usuario'];
+ 
+-// ─── Variables dinámicas por rol ───
++// --- Variables din�micas por rol ---
+ if ($es_jefe) {
+     $dashboard_url = 'dashboard_jefe_agp.php';
+     $volver_url    = 'jefe_ficha_busqueda_menu.php';
+-    $volver_texto  = 'Volver a Búsqueda / Visualización';
++    $volver_texto  = 'Volver a B�squeda / Visualizaci�n';
+     $rol_label     = 'JEFE DE AGP';
+     $total_label   = 'Total I.E.';
+ } else {
+@@ -36,7 +36,7 @@ $stmt->close();
+ $nombre       = trim(($user['nombres'] ?? '') . ' ' . ($user['ape_pat'] ?? '') . ' ' . ($user['ape_mat'] ?? ''));
+ $nombre_corto = h_r($user['nombres'] ?? 'Usuario');
+ 
+-// ─── QUERY PRINCIPAL: Ajustada por Rol ───
++// --- QUERY PRINCIPAL: Ajustada por Rol ---
+ $sql_datos = "
+     SELECT
+         i.id                                        AS id_ie,
+@@ -96,9 +96,9 @@ function normalizar_logro(?string $raw): ?string {
+     if ($raw === null) return null;
+     $r = strtoupper(trim($raw));
+     if (str_contains($r, 'DESTACADO')) return 'DESTACADO';
+-    if (str_contains($r, 'PREVISTO'))  return 'PREVISTO';
+-    if (str_contains($r, 'PROCESO'))   return 'EN PROCESO';
+-    if (str_contains($r, 'INICIO'))    return 'EN INICIO';
++    if (str_contains($r, 'LOGRADO') || str_contains($r, 'PREVISTO')) return 'LOGRADO';
++    if (str_contains($r, 'PROCESO'))   return 'PROCESO';
++    if (str_contains($r, 'INICIO'))    return 'INICIO';
+     return null;
+ }
+ 
+@@ -106,7 +106,7 @@ $js_data = [];
+ foreach ($instituciones_data as $r) {
+     $logro_norm = normalizar_logro($r['logro_esp'] ?? null) ?? normalizar_logro($r['logro_dir'] ?? null);
+     $js_data[] = [
+-        'cod_local'             => $r['cod_local'] ?: ($r['cod_institucion'] ?: '—'),
++        'cod_local'             => $r['cod_local'] ?: ($r['cod_institucion'] ?: '�'),
+         'nombre'                => $r['nombre'],
+         'nivel'                 => $r['nivel'] ?: 'OTRO',
+         'distrito'              => $r['distrito'] ?: 'SIN DISTRITO',
+@@ -122,7 +122,7 @@ foreach ($instituciones_data as $r) {
+     ];
+ }
+ 
+-// ─── ANÁLISIS REAL DE ÍTEMS Y SECCIONES ────────────────────────────────
++// --- AN�LISIS REAL DE �TEMS Y SECCIONES --------------------------------
+ $reg_ids  = array_filter(array_column($js_data, '_id_registro'),  fn($v) => $v > 0);
+ $eval_ids = array_filter(array_column($js_data, '_id_evaluacion'), fn($v) => $v > 0);
+ 
+@@ -151,7 +151,7 @@ if (!empty($reg_ids)) {
+                 'escala'   => (int)$rr['respuesta_escala'],
+                 'num'      => $rr['numero_item'],
+             ];
+-            $seccion_t = $rr['seccion_titulo'] ?: 'Sin Sección';
++            $seccion_t = $rr['seccion_titulo'] ?: 'Sin Secci�n';
+             $secciones_por_registro[(int)$rr['id_registro']][$seccion_t][] = (float)$rr['respuesta_escala'];
+         }
+     }
+@@ -177,7 +177,7 @@ if (!empty($eval_ids)) {
+                 'escala'   => (int)$rr['respuesta_escala'],
+                 'num'      => $rr['numero_item'],
+             ];
+-            $seccion_t = $rr['seccion_titulo'] ?: 'Sin Sección';
++            $seccion_t = $rr['seccion_titulo'] ?: 'Sin Secci�n';
+             $secciones_por_evaluacion[(int)$rr['id_evaluacion']][$seccion_t][] = (float)$rr['respuesta_escala'];
+         }
+     }
+@@ -188,10 +188,10 @@ function extraer_extremos(array $lista): array {
+     usort($lista, fn($a, $b) => $b['escala'] - $a['escala']);
+     $alto = $lista[0];
+     $bajo = $lista[count($lista) - 1];
+-    $trunc = fn($s) => mb_strlen($s) > 80 ? mb_substr($s, 0, 77) . '…' : $s;
++    $trunc = fn($s) => mb_strlen($s) > 80 ? mb_substr($s, 0, 77) . '�' : $s;
+     return [
+-        'alto' => 'Ítem ' . ($alto['num'] ?? '?') . ' (Nivel ' . $alto['escala'] . '): ' . $trunc($alto['pregunta']),
+-        'bajo' => 'Ítem ' . ($bajo['num'] ?? '?') . ' (Nivel ' . $bajo['escala'] . '): ' . $trunc($bajo['pregunta']),
++        'alto' => '�tem ' . ($alto['num'] ?? '?') . ' (Nivel ' . $alto['escala'] . '): ' . $trunc($alto['pregunta']),
++        'bajo' => '�tem ' . ($bajo['num'] ?? '?') . ' (Nivel ' . $bajo['escala'] . '): ' . $trunc($bajo['pregunta']),
+     ];
+ }
+ 
+@@ -208,7 +208,7 @@ foreach ($js_data as &$entry) {
+         $extremos = ['alto' => null, 'bajo' => null];
+     }
+     
+-    // Calcular promedios por sección
++    // Calcular promedios por secci�n
+     $seccion_avg_dir = [];
+     if ($id_reg > 0 && isset($secciones_por_registro[$id_reg])) {
+         foreach ($secciones_por_registro[$id_reg] as $sec => $scores) {
+@@ -257,16 +257,27 @@ if (empty($niveles)) {
+             max-width: 1300px;
+             margin: 0 auto;
+         }
++        .report-page-title { color: #0f172a; letter-spacing: 0; }
++        .report-actions { flex-wrap: wrap; }
++        .report-action-btn { min-height: 38px; border-radius: 4px !important; }
++        .chart-plot { position: relative; width: 100%; height: 280px; }
++        .chart-plot.is-tall { height: 330px; }
++        .chart-plot.is-wide { height: 300px; }
++        .report-chart-row { align-items: stretch; }
++        .report-table-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
++        @media (max-width: 991.98px) { .chart-plot, .chart-plot.is-tall, .chart-plot.is-wide { height: 300px; } }
++        @media (max-width: 575.98px) { .chart-plot, .chart-plot.is-tall, .chart-plot.is-wide { height: 260px; } }
+         /* Dashboard premium custom styles */
+         .metric-card {
+             background: #ffffff;
+             border: 1px solid #e2e8f0;
+             border-radius: 8px;
+-            padding: 20px;
++            padding: 16px 18px;
+             position: relative;
+             overflow: hidden;
+             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
++            min-height: 126px;
+         }
+         .metric-card:hover {
+             transform: translateY(-3px);
+@@ -323,7 +334,7 @@ if (empty($niveles)) {
+             background: #ffffff;
+             border: 1px solid #e2e8f0;
+             border-radius: 8px;
+-            padding: 20px;
++            padding: 16px;
+             height: 100%;
+             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+         }
+@@ -346,7 +357,7 @@ if (empty($niveles)) {
+             display: inline-block;
+         }
+         .bg-destacado { background-color: #dff6dd; color: #107c41; border: 1px solid #a8d5b5; }
+-        .bg-previsto { background-color: #e8f0fe; color: #1a56db; border: 1px solid #adc6ff; }
++        .bg-previsto, .bg-logrado { background-color: #e8f0fe; color: #1a56db; border: 1px solid #adc6ff; }
+         .bg-proceso { background-color: #fffde7; color: #b8860b; border: 1px solid #ffd54f; }
+         .bg-inicio { background-color: #fdecea; color: #c62828; border: 1px solid #ffcdd2; }
+ 
+@@ -382,7 +393,7 @@ if (empty($niveles)) {
+         .table-custom tbody tr { transition: background-color 0.15s ease; }
+         .table-custom tbody tr:hover { background-color: #f8fafc; }
+ 
+-        /* Código local: chip neutro (en vez de <code> rosado por defecto) */
++        /* C�digo local: chip neutro (en vez de <code> rosado por defecto) */
+         .cod-chip {
+             display: inline-block;
+             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+@@ -432,7 +443,7 @@ if (empty($niveles)) {
+         }
+         .status-pill.is-pending::before { background: #f59e0b; }
+ 
+-        /* Celda de indicadores destacados / críticos */
++        /* Celda de indicadores destacados / cr�ticos */
+         .indic-cell { min-width: 250px; }
+         .indic-line { display: flex; align-items: flex-start; gap: 6px; line-height: 1.35; font-size: 0.82rem; }
+         .indic-line + .indic-line { margin-top: 5px; }
+@@ -487,7 +498,7 @@ if (empty($niveles)) {
+             border-radius: 2px;
+         }
+ 
+-        /* ---------- Paginación Fluent Design ---------- */
++        /* ---------- Paginaci�n Fluent Design ---------- */
+         .fluent-pagination {
+             display: flex;
+             justify-content: center;
+@@ -532,14 +543,14 @@ if (empty($niveles)) {
+ </head>
+ <body>
+ 
+-<!-- ───────────────────── TOPBAR ───────────────────── -->
++<!-- --------------------- TOPBAR --------------------- -->
+ <nav class="navbar navbar-expand navbar-light navbar-custom ugel-topbar sticky-top">
+     <div class="container-fluid px-3 px-md-4">
+         <a class="navbar-brand d-flex align-items-center gap-2" href="<?= $dashboard_url ?>">
+             <i class="bi bi-shield-check ugel-brand-icon"></i>
+             <div class="d-flex flex-column lh-1">
+-                <span class="ugel-brand-title">GESTIÓN DE DOCUMENTOS</span>
+-                <small class="ugel-brand-subtitle">Sistema IE · <?= h_r($rol_label) ?></small>
++                <span class="ugel-brand-title">GESTI�N DE DOCUMENTOS</span>
++                <small class="ugel-brand-subtitle">Sistema IE � <?= h_r($rol_label) ?></small>
+             </div>
+         </a>
+ 
+@@ -573,7 +584,7 @@ if (empty($niveles)) {
+                     </li>
+                     <li>
+                         <a class="btn btn-outline-danger ugel-menu-action w-100 fw-bold" href="logout.php">
+-                            <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
++                            <i class="bi bi-box-arrow-right"></i> Cerrar Sesi�n
+                         </a>
+                     </li>
+                 </ul>
+@@ -582,38 +593,38 @@ if (empty($niveles)) {
+     </div>
+ </nav>
+ 
+-<!-- ───────────────────── CONTENIDO PRINCIPAL ───────────────────── -->
++<!-- --------------------- CONTENIDO PRINCIPAL --------------------- -->
+ <main class="ugel-shell py-4 py-md-5 px-3">
+ 
+-    <!-- Encabezado de página -->
++    <!-- Encabezado de p�gina -->
+     <div class="mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+         <div>
+             <a href="<?= $volver_url ?>" class="d-inline-flex align-items-center gap-1 mb-2 text-decoration-none"
+                style="font-size:0.88rem;color:var(--ugel-green-dark);font-weight:500;">
+                 <i class="bi bi-arrow-left"></i> <?= h_r($volver_texto) ?>
+             </a>
+-            <h3 class="ugel-section-title fw-bold mb-1">
++            <h3 class="ugel-section-title report-page-title fw-bold mb-1">
+                 <i class="bi bi-bar-chart-line-fill me-2"></i>Dashboard de Reportes y Monitoreo
+             </h3>
+             <p class="text-muted mb-0" style="font-size:0.93rem;">
+                 <?= $es_jefe ? 'Visualiza el avance y rendimiento de <strong>todas las I.E.</strong> de la provincia.' : 'Visualiza y analiza el avance de las I.E. asignadas a tu sector.' ?>
+             </p>
+         </div>
+-        <div class="d-flex gap-2">
+-            <button onclick="triggerExport('Excel')" class="btn btn-success d-inline-flex align-items-center gap-2 px-3 py-2 fw-semibold" style="border-radius: 4px;">
++        <div class="d-flex gap-2 report-actions">
++            <button onclick="submitReportExport('excel')" class="btn btn-success report-action-btn d-inline-flex align-items-center gap-2 px-3 py-2 fw-semibold">
+                 <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
+             </button>
+-            <button onclick="triggerExport('PDF')" class="btn btn-danger d-inline-flex align-items-center gap-2 px-3 py-2 fw-semibold" style="border-radius: 4px;">
++            <button onclick="submitReportExport('pdf')" class="btn btn-danger report-action-btn d-inline-flex align-items-center gap-2 px-3 py-2 fw-semibold">
+                 <i class="bi bi-file-earmark-pdf-fill"></i> Exportar PDF
+             </button>
+         </div>
+     </div>
+ 
+-    <!-- ── SECCIÓN DE FILTROS INTERACTIVOS ── -->
++    <!-- -- SECCI�N DE FILTROS INTERACTIVOS -- -->
+     <div class="filter-section mb-4">
+         <div class="d-flex align-items-center gap-2 mb-3 border-bottom pb-2">
+             <i class="bi bi-funnel-fill text-success"></i>
+-            <h6 class="fw-bold mb-0 text-dark">Filtros dinámicos de consulta</h6>
++            <h6 class="fw-bold mb-0 text-dark">Filtros din�micos de consulta</h6>
+         </div>
+         <div class="row g-3">
+             <!-- Distrito -->
+@@ -629,7 +640,7 @@ if (empty($niveles)) {
+             
+             <!-- Nivel -->
+             <div class="col-12 col-sm-6 col-md-3">
+-                <label class="form-label small fw-bold text-secondary">Nivel de Educación</label>
++                <label class="form-label small fw-bold text-secondary">Nivel de Educaci�n</label>
+                 <select id="filter-nivel" class="form-select fluent-select" onchange="applyFilters()">
+                     <option value="">-- Todos los niveles --</option>
+                     <?php foreach ($niveles as $niv): ?>
+@@ -640,7 +651,7 @@ if (empty($niveles)) {
+ 
+             <!-- Resultado Logro -->
+             <div class="col-12 col-sm-6 col-md-3">
+-                <label class="form-label small fw-bold text-secondary">Resultado de Evaluación</label>
++                <label class="form-label small fw-bold text-secondary">Resultado de Evaluaci�n</label>
+                 <select id="filter-logro" class="form-select fluent-select" onchange="applyFilters()">
+                     <option value="">-- Todos los resultados --</option>
+                     <option value="DESTACADO">DESTACADO (85 - 100)</option>
+@@ -669,7 +680,7 @@ if (empty($niveles)) {
+         </div>
+     </div>
+ 
+-    <!-- ── TARJETAS DE MÉTRICAS (ESTADÍSTICAS) ── -->
++    <!-- -- TARJETAS DE M�TRICAS (ESTAD�STICAS) -- -->
+     <div class="row g-3 mb-4">
+         <!-- Total I.E. -->
+         <div class="col-12 col-sm-6 col-md-3">
+@@ -678,12 +689,12 @@ if (empty($niveles)) {
+                     <i class="bi bi-building"></i>
+                 </div>
+                 <div class="metric-value" id="stat-total-ie">0</div>
+-                <p class="metric-label">Instituciones en el Ámbito</p>
++                <p class="metric-label">Instituciones en el �mbito</p>
+             </div>
+         </div>
+ 
+         <!-- Fichas Autoevaluadas -->
+-        <div class="col-12 col-sm-6 col-md-3">
++        <div class="col-12 col-sm-6 col-md-3" id="card-autoevaluadas-container">
+             <div class="metric-card is-blue">
+                 <div class="metric-icon-wrapper metric-icon-blue">
+                     <i class="bi bi-file-earmark-person"></i>
+@@ -694,7 +705,7 @@ if (empty($niveles)) {
+         </div>
+ 
+         <!-- Fichas Evaluadas -->
+-        <div class="col-12 col-sm-6 col-md-3">
++        <div class="col-12 col-sm-6 col-md-3" id="card-evaluadas-container">
+             <div class="metric-card is-orange">
+                 <div class="metric-icon-wrapper metric-icon-orange">
+                     <i class="bi bi-patch-check"></i>
+@@ -716,71 +727,46 @@ if (empty($niveles)) {
+         </div>
+     </div>
+ 
+-    <!-- ── GRÁFICOS INTERACTIVOS ── -->
+-    <div class="row g-4 mb-4">
+-        <!-- Gráfico 1: Barras Comparativas por Distrito -->
+-        <div class="col-12 col-lg-8">
++    <!-- -- GR�FICOS INTERACTIVOS -- -->
++    <div class="row g-3 mb-3 report-chart-row">
++        <!-- Gr�fico 1: Barras Comparativas por Distrito -->
++        <div class="col-12">
+             <div class="chart-card">
+                 <div class="chart-card-title">
+-                    <i class="bi bi-bar-chart-steps text-success"></i> Monitoreo por Distrito (Autoevaluadas vs. Evaluadas)
++                    <i class="bi bi-bar-chart-steps text-success"></i> Monitoreo de distritos
+                 </div>
+-                <div style="position: relative; height: 280px;">
++                <div class="chart-plot is-wide">
+                     <canvas id="chart-distritos"></canvas>
+                 </div>
+             </div>
+         </div>
+ 
+-        <!-- Gráfico 2: Torta Niveles Educativos -->
+-        <div class="col-12 col-lg-4">
+-            <div class="chart-card">
+-                <div class="chart-card-title">
+-                    <i class="bi bi-pie-chart-fill text-success"></i> Distribución por Nivel Educativo
+-                </div>
+-                <div style="position: relative; height: 280px; display: flex; align-items: center; justify-content: center;">
+-                    <canvas id="chart-niveles"></canvas>
+-                </div>
+-            </div>
+-        </div>
+-
+-        <!-- Gráfico 3: Barra Horizontal Niveles de Logro -->
++        <!-- Gr�fico 2: Barra Horizontal Niveles de Logro -->
+         <div class="col-12 col-lg-6">
+             <div class="chart-card">
+                 <div class="chart-card-title">
+                     <i class="bi bi-speedometer2 text-success"></i> Escalas de Logro Alcanzadas (Especialista)
+                 </div>
+-                <div style="position: relative; height: 380px;">
++                <div class="chart-plot is-tall">
+                     <canvas id="chart-logro"></canvas>
+                 </div>
+             </div>
+         </div>
+ 
+-        <!-- Gráfico 4: Radar de ítems clave -->
++        <!-- Gr�fico 3: Torta Niveles Educativos -->
+         <div class="col-12 col-lg-6">
+             <div class="chart-card">
+                 <div class="chart-card-title">
+-                    <i class="bi bi-graph-up-arrow text-success"></i> Fortalezas y Oportunidades por Aspectos de Monitoreo
++                    <i class="bi bi-pie-chart-fill text-success"></i> Distribuci�n por Nivel Educativo
+                 </div>
+-                <div class="row align-items-center" style="min-height: 380px;">
+-                    <div class="col-12 col-md-7 d-flex align-items-center justify-content-center">
+-                        <div style="position: relative; width: 100%; height: 340px;">
+-                            <canvas id="chart-radar"></canvas>
+-                        </div>
+-                    </div>
+-                    <div class="col-12 col-md-5">
+-                        <div id="radar-legend-container" class="ugel-radar-legend" style="max-height: 340px; overflow-y: auto; font-size: 0.78rem; margin-top: 10px;">
+-                            <h6 class="fw-bold mb-2 text-secondary" style="font-size: 0.82rem;">Aspectos de Monitoreo:</h6>
+-                            <ul class="list-unstyled mb-0" id="radar-legend-list" style="padding-left: 0;">
+-                                <!-- Se generará dinámicamente -->
+-                            </ul>
+-                        </div>
+-                    </div>
++                <div class="chart-plot is-tall">
++                    <canvas id="chart-niveles"></canvas>
+                 </div>
+             </div>
+         </div>
+     </div>
+-
+-    <!-- ── TABLA DE DETALLES Y AGRUPACIONES ── -->
+-    <div class="card-ref ugel-module-card mb-4" style="border: 1px solid #e2e8f0; border-radius: 8px;">
++    <!-- -- TABLA DE DETALLES Y AGRUPACIONES -- -->
++    <div class="card-ref report-table-card mb-4">
+         <div class="p-3 border-bottom d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+             <div class="d-flex align-items-center gap-2">
+                 <i class="bi bi-table text-success fs-5"></i>
+@@ -792,60 +778,59 @@ if (empty($niveles)) {
+             <table class="table table-custom table-hover mb-0">
+                 <thead>
+                     <tr>
+-                        <th>Cód. Local</th>
+-                        <th>Institución Educativa</th>
++                        <th>C�d. Local</th>
++                        <th>Instituci�n Educativa</th>
+                         <th>Nivel</th>
+                         <th>Distrito</th>
+-                        <th class="text-center">Autoevaluación (Dir.)</th>
+-                        <th class="text-center">Evaluación (Esp.)</th>
++                        <th class="text-center">Autoevaluaci�n (Dir.)</th>
++                        <th class="text-center">Evaluaci�n (Esp.)</th>
+                         <th class="text-center">Nivel Logro</th>
+-                        <th>Indicadores Destacados / Críticos</th>
++                        <th>Indicadores Destacados / Cr�ticos</th>
+                     </tr>
+                 </thead>
+                 <tbody id="table-body">
+-                    <!-- Filas dinámicas -->
++                    <!-- Filas din�micas -->
+                 </tbody>
+             </table>
+         </div>
+-        <!-- PAGINACIÓN CARD FOOTER -->
++        <!-- PAGINACI�N CARD FOOTER -->
+         <div class="card-footer bg-white py-3 border-top-0 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3" id="pagination-container" style="border-radius: 0 0 8px 8px; border-top: 1px solid #e2e8f0; display: none;">
+             <small class="text-muted text-center" id="pagination-info">Mostrando registros del 0 al 0 de un total de 0</small>
+             <div class="fluent-pagination" id="pagination-controls">
+-                <!-- Botones generados dinámicamente -->
++                <!-- Botones generados din�micamente -->
+             </div>
+         </div>
+     </div>
+ 
+ </main>
+ 
+-<!-- ── NOTIFICACIÓN TOAST DE EXPORTACIÓN ── -->
++<!-- -- NOTIFICACI�N TOAST DE EXPORTACI�N -- -->
+ <div id="export-toast" class="toast-notification">
+     <i class="bi bi-check-circle-fill text-success fs-5"></i>
+-    <span id="toast-message">Exportación realizada exitosamente</span>
++    <span id="toast-message">Exportaci�n realizada exitosamente</span>
+ </div>
+ 
+-<!-- ───────────────────── CAPA DE CONTROL DE JAVASCRIPT (DATOS E INTERACCIÓN) ───────────────────── -->
++<!-- --------------------- CAPA DE CONTROL DE JAVASCRIPT (DATOS E INTERACCI�N) --------------------- -->
+ <script>
+     // 1. Dataset de I.E. cargado desde PHP (datos reales de la base de datos)
+     const rawInstituciones = <?php echo json_encode($js_data, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+ 
+-    // 2. Variables de Gráficos globales para poder redibujarlos (destroy/create)
++    // 2. Variables de Gr�ficos globales para poder redibujarlos (destroy/create)
+     let chartDistritosInst = null;
+     let chartNivelesInst = null;
+     let chartLogroInst = null;
+-    let chartRadarInst = null;
+ 
+-    // 2b. Estado de paginación
++    // 2b. Estado de paginaci�n
+     const ROWS_PER_PAGE = 15;
+     let currentPage = 1;
+     let currentFilteredData = [];
+ 
+-    // Inicialización al cargar la página
++    // Inicializaci�n al cargar la p�gina
+     document.addEventListener("DOMContentLoaded", function() {
+         applyFilters();
+     });
+ 
+-    // 3. Función para aplicar filtros e interactividad
++    // 3. Funci�n para aplicar filtros e interactividad
+     function applyFilters() {
+         const selDistrito = document.getElementById("filter-distrito").value.toUpperCase();
+         const selNivel = document.getElementById("filter-nivel").value.toUpperCase();
+@@ -866,17 +851,17 @@ if (empty($niveles)) {
+             return true;
+         });
+ 
+-        // Guardar datos filtrados y resetear a página 1
++        // Guardar datos filtrados y resetear a p�gina 1
+         currentFilteredData = filteredData;
+         currentPage = 1;
+ 
+-        // Actualizar tarjetas de métricas
++        // Actualizar tarjetas de m�tricas
+         updateMetrics(filteredData);
+ 
+-        // Actualizar la Tabla con paginación
++        // Actualizar la Tabla con paginaci�n
+         updateTable(filteredData, currentPage);
+ 
+-        // Renderizar/Actualizar Gráficos
++        // Renderizar/Actualizar Gr�ficos
+         renderCharts(filteredData);
+     }
+ 
+@@ -898,7 +883,7 @@ if (empty($niveles)) {
+         document.getElementById("filtered-count-badge").innerText = `Mostrando ${total} de ${rawInstituciones.length} I.E.`;
+     }
+ 
+-    // 5. Actualizar la tabla de resultados (con paginación)
++    // 5. Actualizar la tabla de resultados (con paginaci�n)
+     function updateTable(data, page) {
+         const tbody = document.getElementById("table-body");
+         tbody.innerHTML = "";
+@@ -910,7 +895,7 @@ if (empty($niveles)) {
+                         <i class="bi bi-info-circle me-1"></i> No hay registros que coincidan con los filtros seleccionados.
+                     </td>
+                 </tr>`;
+-            // Ocultar paginación cuando no hay datos
++            // Ocultar paginaci�n cuando no hay datos
+             document.getElementById("pagination-container").style.display = "none";
+             return;
+         }
+@@ -922,31 +907,31 @@ if (empty($niveles)) {
+         const pageData = data.slice(start, end);
+ 
+         pageData.forEach(item => {
+-            // Autoevaluación Badge
++            // Autoevaluaci�n Badge
+             const autoevaluacionCol = item.autoevaluada
+-                ? `<div class="text-center"><span class="badge bg-light text-primary border" style="font-size:0.78rem;">SÍ <small class="text-muted">(${item.autoevaluada_fecha})</small></span><br><small class="text-muted fw-bold">Puntaje: ${item.score_dir}%</small></div>`
++                ? `<div class="text-center"><span class="badge bg-light text-primary border" style="font-size:0.78rem;">S� <small class="text-muted">(${item.autoevaluada_fecha})</small></span><br><small class="text-muted fw-bold">Puntaje: ${item.score_dir}%</small></div>`
+                 : '<div class="text-center"><span class="status-pill">No realizada</span></div>';
+ 
+-            // Evaluación Especialista Badge
++            // Evaluaci�n Especialista Badge
+             const evaluacionCol = item.evaluada_especialista
+-                ? `<div class="text-center"><span class="badge bg-light text-success border" style="font-size:0.78rem;">SÍ <small class="text-muted">(${item.evaluada_fecha})</small></span><br><small class="text-muted fw-bold">Puntaje: ${item.score_esp}%</small></div>`
++                ? `<div class="text-center"><span class="badge bg-light text-success border" style="font-size:0.78rem;">S� <small class="text-muted">(${item.evaluada_fecha})</small></span><br><small class="text-muted fw-bold">Puntaje: ${item.score_esp}%</small></div>`
+                 : '<div class="text-center"><span class="status-pill is-pending">Pendiente</span></div>';
+ 
+             // Escala Logro Badge
+             let logroBadge = '<span class="text-muted small">N/A</span>';
+             if (item.logro) {
+-                const badgeCls = item.logro === 'DESTACADO' ? 'bg-destacado' : (item.logro === 'PREVISTO' ? 'bg-previsto' : (item.logro === 'EN PROCESO' ? 'bg-proceso' : 'bg-inicio'));
++                const badgeCls = item.logro === 'DESTACADO' ? 'bg-destacado' : (item.logro === 'LOGRADO' ? 'bg-logrado' : (item.logro === 'PROCESO' ? 'bg-proceso' : 'bg-inicio'));
+                 logroBadge = `<span class="badge-logro ${badgeCls}">${item.logro}</span>`;
+             }
+ 
+-            // Indicadores destacados / críticos
++            // Indicadores destacados / cr�ticos
+             let indicadoresCol;
+             if (item.item_alto === null && item.item_bajo === null) {
+-                indicadoresCol = '<span class="indic-empty">Sin datos de ítems</span>';
++                indicadoresCol = '<span class="indic-empty">Sin datos de �tems</span>';
+             } else {
+                 indicadoresCol = `
+-                    <div class="indic-line"><i class="bi bi-arrow-up-circle-fill text-success"></i><span><strong class="text-success">Fortaleza:</strong> ${item.item_alto !== null ? item.item_alto : '—'}</span></div>
+-                    <div class="indic-line"><i class="bi bi-arrow-down-circle-fill text-danger"></i><span><strong class="text-danger">Oportunidad:</strong> ${item.item_bajo !== null ? item.item_bajo : '—'}</span></div>`;
++                    <div class="indic-line"><i class="bi bi-arrow-up-circle-fill text-success"></i><span><strong class="text-success">Fortaleza:</strong> ${item.item_alto !== null ? item.item_alto : '�'}</span></div>
++                    <div class="indic-line"><i class="bi bi-arrow-down-circle-fill text-danger"></i><span><strong class="text-danger">Oportunidad:</strong> ${item.item_bajo !== null ? item.item_bajo : '�'}</span></div>`;
+             }
+ 
+             tbody.innerHTML += `
+@@ -963,11 +948,11 @@ if (empty($niveles)) {
+             `;
+         });
+ 
+-        // Actualizar footer de paginación
++        // Actualizar footer de paginaci�n
+         renderPagination(data.length, safePage, totalPages, start, end);
+     }
+ 
+-    // 5b. Renderizar controles de paginación Fluent
++    // 5b. Renderizar controles de paginaci�n Fluent
+     function renderPagination(total, page, totalPages, start, end) {
+         const container = document.getElementById("pagination-container");
+         const info = document.getElementById("pagination-info");
+@@ -982,25 +967,25 @@ if (empty($niveles)) {
+ 
+         controls.innerHTML = "";
+ 
+-        // Botón «Primera
++        // Bot�n �Primera
+         if (page > 1) {
+             const btn = document.createElement("button");
+             btn.className = "fluent-page-link";
+             btn.innerHTML = "&laquo;";
+-            btn.title = "Primera página";
++            btn.title = "Primera p�gina";
+             btn.onclick = () => goToPage(1);
+             controls.appendChild(btn);
+ 
+-            // Botón ‹Anterior
++            // Bot�n �Anterior
+             const prev = document.createElement("button");
+             prev.className = "fluent-page-link";
+             prev.innerHTML = "&lsaquo;";
+-            prev.title = "Página anterior";
++            prev.title = "P�gina anterior";
+             prev.onclick = () => goToPage(page - 1);
+             controls.appendChild(prev);
+         }
+ 
+-        // Números de página (ventana de ±2 alrededor de la página actual)
++        // N�meros de p�gina (ventana de �2 alrededor de la p�gina actual)
+         const rangeStart = Math.max(1, page - 2);
+         const rangeEnd   = Math.min(totalPages, page + 2);
+ 
+@@ -1009,7 +994,7 @@ if (empty($niveles)) {
+             if (rangeStart > 2) {
+                 const dots = document.createElement("span");
+                 dots.className = "fluent-page-dots";
+-                dots.textContent = "…";
++                dots.textContent = "�";
+                 controls.appendChild(dots);
+             }
+         }
+@@ -1022,26 +1007,26 @@ if (empty($niveles)) {
+             if (rangeEnd < totalPages - 1) {
+                 const dots = document.createElement("span");
+                 dots.className = "fluent-page-dots";
+-                dots.textContent = "…";
++                dots.textContent = "�";
+                 controls.appendChild(dots);
+             }
+             appendPageBtn(controls, totalPages, page);
+         }
+ 
+-        // Botón ›Siguiente
++        // Bot�n �Siguiente
+         if (page < totalPages) {
+             const next = document.createElement("button");
+             next.className = "fluent-page-link";
+             next.innerHTML = "&rsaquo;";
+-            next.title = "Página siguiente";
++            next.title = "P�gina siguiente";
+             next.onclick = () => goToPage(page + 1);
+             controls.appendChild(next);
+ 
+-            // Botón »Última
++            // Bot�n ��ltima
+             const last = document.createElement("button");
+             last.className = "fluent-page-link";
+             last.innerHTML = "&raquo;";
+-            last.title = "Última página";
++            last.title = "�ltima p�gina";
+             last.onclick = () => goToPage(totalPages);
+             controls.appendChild(last);
+         }
+@@ -1071,12 +1056,12 @@ if (empty($niveles)) {
+         applyFilters();
+     }
+ 
+-    // 7. Renderizar y actualizar los gráficos Chart.js
++    // 7. Renderizar y actualizar los gr�ficos Chart.js
+     function renderCharts(data) {
+-        // --- 7.1. Gráfico 1: Barras Comparativas por Distrito ---
+         const distritosList = [...new Set(rawInstituciones.map(i => i.distrito))];
+-        const autoevaluadasByDist = distritosList.map(d => data.filter(i => i.distrito === d && i.autoevaluada).length);
+         const evaluadasByDist = distritosList.map(d => data.filter(i => i.distrito === d && i.evaluada_especialista).length);
++        const noEvaluadasByDist = distritosList.map(d => data.filter(i => i.distrito === d && !i.evaluada_especialista).length);
++        const maxDistrito = Math.max(...evaluadasByDist, ...noEvaluadasByDist, 0);
+ 
+         if (chartDistritosInst) chartDistritosInst.destroy();
+         const ctxDist = document.getElementById("chart-distritos").getContext("2d");
+@@ -1085,33 +1070,18 @@ if (empty($niveles)) {
+             data: {
+                 labels: distritosList.map(d => d.charAt(0) + d.slice(1).toLowerCase()),
+                 datasets: [
+-                    {
+-                        label: "Autoevaluadas (Director)",
+-                        data: autoevaluadasByDist,
+-                        backgroundColor: "#1a56db",
+-                        borderRadius: 4
+-                    },
+-                    {
+-                        label: "Evaluadas (Especialista)",
+-                        data: evaluadasByDist,
+-                        backgroundColor: "#1a5c38",
+-                        borderRadius: 4
+-                    }
++                    { label: "Evaluadas", data: evaluadasByDist, backgroundColor: "#107c41", borderRadius: 4 },
++                    { label: "No evaluadas", data: noEvaluadasByDist, backgroundColor: "#dc3545", borderRadius: 4 }
+                 ]
+             },
+             options: {
+                 responsive: true,
+                 maintainAspectRatio: false,
+-                plugins: {
+-                    legend: { position: "top", labels: { boxWidth: 12, font: { family: "Segoe UI" } } }
+-                },
+-                scales: {
+-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+-                }
++                plugins: { legend: { position: "top", labels: { boxWidth: 12, font: { family: "Segoe UI" } } } },
++                scales: { y: { beginAtZero: true, suggestedMax: Math.max(maxDistrito + 1, 5), ticks: { stepSize: 1 } } }
+             }
+         });
+ 
+-        // --- 7.2. Gráfico 2: Torta de Niveles Educativos ---
+         const nivelesList = ["INICIAL", "PRIMARIA", "SECUNDARIA"];
+         const countByNivel = nivelesList.map(n => data.filter(i => i.nivel === n).length);
+ 
+@@ -1121,254 +1091,113 @@ if (empty($niveles)) {
+             type: "doughnut",
+             data: {
+                 labels: ["Inicial", "Primaria", "Secundaria"],
+-                datasets: [{
+-                    data: countByNivel,
+-                    backgroundColor: ["#ffc107", "#1a5c38", "#1a56db"],
+-                    borderWidth: 2,
+-                    borderColor: "#ffffff"
+-                }]
++                datasets: [{ data: countByNivel, backgroundColor: ["#ffc107", "#1a5c38", "#1a56db"], borderWidth: 2, borderColor: "#ffffff" }]
+             },
+             options: {
+                 responsive: true,
+                 maintainAspectRatio: false,
+-                plugins: {
+-                    legend: { position: "right", labels: { boxWidth: 12, font: { family: "Segoe UI" } } }
+-                },
++                plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { family: "Segoe UI" } } } },
+                 cutout: "60%"
+             }
+         });
+ 
+-        // --- 7.3. Gráfico 3: Horizontal de Niveles de Logro ---
+-        const logrosList = ["DESTACADO", "PREVISTO", "EN PROCESO", "EN INICIO"];
++        const logrosList = ["DESTACADO", "LOGRADO", "PROCESO", "INICIO"];
+         const countByLogro = logrosList.map(l => data.filter(i => i.logro === l).length);
++        const maxLogro = Math.max(...countByLogro, 0);
+ 
+         if (chartLogroInst) chartLogroInst.destroy();
+         const ctxLogro = document.getElementById("chart-logro").getContext("2d");
+         chartLogroInst = new Chart(ctxLogro, {
+             type: "bar",
+             data: {
+-                labels: ["Destacado", "Previsto", "En Proceso", "En Inicio"],
+-                datasets: [{
+-                    label: "Instituciones",
+-                    data: countByLogro,
+-                    backgroundColor: ["#107c41", "#1a56db", "#b8860b", "#c62828"],
+-                    borderRadius: 4
+-                }]
++                labels: ["Destacado", "Logrado", "Proceso", "Inicio"],
++                datasets: [{ label: "Instituciones", data: countByLogro, backgroundColor: ["#107c41", "#1a56db", "#b8860b", "#c62828"], borderRadius: 4 }]
+             },
+             options: {
+                 indexAxis: "y",
+                 responsive: true,
+                 maintainAspectRatio: false,
+-                plugins: {
+-                    legend: { display: false }
+-                },
+-                scales: {
+-                    x: { beginAtZero: true, ticks: { stepSize: 1 } }
+-                }
+-            }
+-        });
+-
+-        // --- 7.4. Gráfico 4: Radar de Aspectos Clave de Monitoreo ---
+-        // Obtener la lista de secciones únicas de todas las instituciones cargadas
+-        const allSections = new Set();
+-        rawInstituciones.forEach(item => {
+-            if (item.secciones_dir) {
+-                Object.keys(item.secciones_dir).forEach(sec => allSections.add(sec));
+-            }
+-            if (item.secciones_esp) {
+-                Object.keys(item.secciones_esp).forEach(sec => allSections.add(sec));
++                plugins: { legend: { display: false } },
++                scales: { x: { beginAtZero: true, suggestedMax: Math.max(maxLogro + 1, 5), ticks: { stepSize: 1 } } }
+             }
+         });
+-        const sectionsList = Array.from(allSections).sort();
+-
+-        // Calcular los promedios para cada sección usando los datos filtrados
+-        const radarValoresAutoevaluacion = [];
+-        const radarValoresEspecialista = [];
+-
+-        sectionsList.forEach(sec => {
+-            let sumDir = 0;
+-            let countDir = 0;
+-            let sumEsp = 0;
+-            let countEsp = 0;
+-
+-            data.forEach(item => {
+-                if (item.secciones_dir && item.secciones_dir[sec] !== undefined) {
+-                    sumDir += item.secciones_dir[sec];
+-                    countDir++;
+-                }
+-                if (item.secciones_esp && item.secciones_esp[sec] !== undefined) {
+-                    sumEsp += item.secciones_esp[sec];
+-                    countEsp++;
+-                }
+-            });
+-
+-            // Convertir escala 1-4 a porcentaje (0-100%)
+-            const toPercent = (val) => Math.round(((val - 1) / 3) * 100);
+-
+-            radarValoresAutoevaluacion.push(countDir > 0 ? toPercent(sumDir / countDir) : 0);
+-            radarValoresEspecialista.push(countEsp > 0 ? toPercent(sumEsp / countEsp) : 0);
++    }
++    // 8. Exportacion de la tabla y notificaciones
++    function reportTableRows() {
++        return currentFilteredData.map(item => {
++            const autoevaluacion = item.autoevaluada
++                ? `Si | Fecha: ${item.autoevaluada_fecha || '-'} | Puntaje: ${item.score_dir ?? '-'}%`
++                : 'No realizada';
++            const evaluacion = item.evaluada_especialista
++                ? `Si | Fecha: ${item.evaluada_fecha || '-'} | Puntaje: ${item.score_esp ?? '-'}%`
++                : 'Pendiente';
++            const indicadores = (item.item_alto === null && item.item_bajo === null)
++                ? 'Sin datos de items'
++                : `Fortaleza: ${item.item_alto || '-'} | Oportunidad: ${item.item_bajo || '-'}`;
++
++            return {
++                cod_local: item.cod_local || '',
++                nombre: item.nombre || '',
++                nivel: item.nivel || '',
++                distrito: item.distrito || '',
++                autoevaluacion,
++                evaluacion,
++                logro: item.logro || 'N/A',
++                indicadores
++            };
+         });
++    }
+ 
+-        // Función para dividir texto largo en varias líneas para Chart.js
+-        function wrapLabelText(text, maxLen = 25) {
+-            if (!text) return '';
+-            const words = text.split(' ');
+-            const lines = [];
+-            let currentLine = '';
+-            
+-            words.forEach(word => {
+-                if ((currentLine + ' ' + word).trim().length <= maxLen) {
+-                    currentLine = (currentLine + ' ' + word).trim();
+-                } else {
+-                    if (currentLine) lines.push(currentLine);
+-                    currentLine = word;
+-                }
+-            });
+-            if (currentLine) lines.push(currentLine);
+-            return lines;
+-        }
++    function submitReportExport(format) {
++        const rows = reportTableRows();
++        const prettyFormat = format === 'pdf' ? 'PDF' : 'Excel';
+ 
+-        const aspectShortNames = {
+-            "DESARROLLO INTEGRAL DE LAS Y LOS ESTUDIANTES": "Desarrollo Integral",
+-            "Seguimiento a la asistencia y puntualidad de las y los estudiantes y del personal de la IE asegurando el cumplimiento del tiempo lectivo y de gestión.": "Asistencia y Puntualidad",
+-            "Elaboración, difusión y seguimiento de la calendarización y prevención de eventos que afecten su cumplimiento": "Calendarización",
+-            "GESTIÓN DE LAS CONDICIONES OPERATIVAS": "Condiciones Operativas",
+-            "Entrega oportuna y promoción del uso de materiales y recursos educativos": "Materiales y Recursos",
+-            "Gestión oportuna y sin condicionamientos de la matrícula (acceso y continuidad de estudios)": "Gestión de Matrícula",
+-            "Gestión y mantenimiento de la infraestructura, equipamiento y mobiliario.": "Infraestructura y Mobiliario",
+-            "Mantenimiento de espacios salubres, seguros y accesibles que garanticen la salud e integridad física de la comunidad educativa, incluyendo la gestión del riesgo, emergencias y desastres, teniendo en cuenta las diferentes modalidades y turnos de la IE.": "Gestión del Riesgo y Salud",
+-            "Práctica transversal: Gestión de recursos propios y de talento humano.": "Recursos Propios y Talento"
+-        };
+-
+-        const legendListEl = document.getElementById("radar-legend-list");
+-        if (legendListEl) {
+-            legendListEl.innerHTML = "";
++        if (rows.length === 0) {
++            showExportToast(`No hay registros en la tabla para exportar en <strong>${prettyFormat}</strong>.`, false);
++            return;
+         }
+ 
+-        let labelsList = sectionsList.map(sec => {
+-            const shortName = aspectShortNames[sec] || (sec.length > 25 ? sec.substr(0, 22) + '...' : sec);
+-            
+-            if (legendListEl) {
+-                const li = document.createElement("li");
+-                li.className = "radar-legend-item mb-3";
+-                li.innerHTML = `
+-                    <div class="fw-semibold text-dark" style="font-size: 0.8rem;">
+-                        <i class="bi bi-tag-fill text-success me-1"></i>${shortName}
+-                    </div>
+-                    <div class="text-muted" style="font-size: 0.72rem; line-height: 1.25; padding-left: 12px; border-left: 2px solid #1a5c38; margin-top: 2px;">
+-                        ${sec}
+-                    </div>
+-                `;
+-                legendListEl.appendChild(li);
+-            }
+-            return wrapLabelText(shortName, 15);
+-        });
++        const form = document.createElement('form');
++        form.method = 'POST';
++        form.action = 'exportar_vista_reportes.php';
++        form.target = 'report-export-frame';
++        form.style.display = 'none';
+ 
+-        let finalValoresAutoeval = radarValoresAutoevaluacion;
+-        let finalValoresEsp = radarValoresEspecialista;
+-
+-        if (sectionsList.length === 0) {
+-            const defaultAspects = ["Planificación Curricular", "Clima Institucional", "Acompañamiento Pedagógico", "Convivencia Escolar", "Uso de Recursos TIC", "Monitoreo del Aprendizaje"];
+-            labelsList = defaultAspects.map(sec => wrapLabelText(sec, 15));
+-            finalValoresAutoeval = [0, 0, 0, 0, 0, 0];
+-            finalValoresEsp = [0, 0, 0, 0, 0, 0];
+-            if (legendListEl) {
+-                defaultAspects.forEach(sec => {
+-                    const li = document.createElement("li");
+-                    li.className = "radar-legend-item mb-2";
+-                    li.innerHTML = `<div class="fw-semibold text-dark" style="font-size: 0.8rem;"><i class="bi bi-tag-fill text-success me-1"></i>${sec}</div>`;
+-                    legendListEl.appendChild(li);
+-                });
+-            }
+-        }
++        const formatInput = document.createElement('input');
++        formatInput.type = 'hidden';
++        formatInput.name = 'format';
++        formatInput.value = format;
++        form.appendChild(formatInput);
+ 
+-        if (chartRadarInst) chartRadarInst.destroy();
+-        const ctxRadar = document.getElementById("chart-radar").getContext("2d");
+-        chartRadarInst = new Chart(ctxRadar, {
+-            type: "radar",
+-            data: {
+-                labels: labelsList,
+-                datasets: [
+-                    {
+-                        label: "Puntaje Promedio Director",
+-                        data: finalValoresAutoeval,
+-                        borderColor: "#1a56db",
+-                        backgroundColor: "rgba(26, 86, 219, 0.1)",
+-                        pointBackgroundColor: "#1a56db",
+-                        borderWidth: 2,
+-                        pointRadius: 3
+-                    },
+-                    {
+-                        label: "Puntaje Promedio Especialista",
+-                        data: finalValoresEsp,
+-                        borderColor: "#1a5c38",
+-                        backgroundColor: "rgba(26, 92, 56, 0.1)",
+-                        pointBackgroundColor: "#1a5c38",
+-                        borderWidth: 2,
+-                        pointRadius: 3
+-                    }
+-                ]
+-            },
+-            options: {
+-                responsive: true,
+-                maintainAspectRatio: false,
+-                scales: {
+-                    r: {
+-                        angleLines: { 
+-                            display: true,
+-                            color: "rgba(0, 0, 0, 0.08)"
+-                        },
+-                        grid: {
+-                            color: "rgba(0, 0, 0, 0.08)"
+-                        },
+-                        suggestedMin: 0,
+-                        suggestedMax: 100,
+-                        ticks: {
+-                            font: { family: "Segoe UI", size: 9 },
+-                            backdropColor: "transparent",
+-                            color: "#64748b"
+-                        },
+-                        pointLabels: {
+-                            font: {
+-                                size: 10,
+-                                family: "Segoe UI",
+-                                weight: "600"
+-                            },
+-                            color: "#334155",
+-                            padding: 8
+-                        }
+-                    }
+-                },
+-                plugins: {
+-                    legend: { 
+-                        position: "top", 
+-                        labels: { 
+-                            boxWidth: 12, 
+-                            font: { family: "Segoe UI", size: 11, weight: "600" },
+-                            padding: 10
+-                        } 
+-                    }
+-                }
+-            }
+-        });
++        const rowsInput = document.createElement('textarea');
++        rowsInput.name = 'rows';
++        rowsInput.value = JSON.stringify(rows);
++        form.appendChild(rowsInput);
++
++        document.body.appendChild(form);
++        form.submit();
++        form.remove();
++
++        showExportToast(`Descargando la tabla filtrada en formato <strong>${prettyFormat}</strong>.`, true);
+     }
+ 
+-    // 8. Toasts e indicaciones interactivas
+-    function triggerExport(format) {
++    function showExportToast(message, success = true) {
+         const toast = document.getElementById("export-toast");
+         const msg = document.getElementById("toast-message");
+-        
+-        msg.innerHTML = `<i class="bi bi-file-earmark-arrow-down-fill text-success fs-5"></i> Reporte generado y descargado en formato <strong>${format}</strong> con éxito.`;
+-        
++        const icon = success
++            ? '<i class="bi bi-file-earmark-arrow-down-fill text-success fs-5"></i>'
++            : '<i class="bi bi-exclamation-circle-fill text-warning fs-5"></i>';
++
++        msg.innerHTML = `${icon} ${message}`;
+         toast.classList.add("show");
+-        
++
+         setTimeout(() => {
+             toast.classList.remove("show");
+         }, 4000);
+-    }
+-</script>
++    }</script>
+ 
+ <!-- Carga Bootstrap Bundle (con dropdowns, etc.) -->
+ <script src="assets/lib/bootstrap/bootstrap.bundle.min.js"></script>
++<iframe name="report-export-frame" title="Exportacion de reportes" style="display:none;width:0;height:0;border:0;"></iframe>
+ </body>
+ </html>
